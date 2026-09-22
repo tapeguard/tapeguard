@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 /**
  * The tracked instruments and their per-instrument parameters.
  *
@@ -11,6 +13,51 @@
  * uses a prior is not a rounding error, it is a false claim about how much
  * validation stands behind the number a liquidation reads.
  */
+
+const FITTED = loadCalibration();
+
+/** Where a parameter came from. Never inferred; always carried. */
+export type ParamSource = "fitted" | "prior";
+
+/**
+ * Exported so the return type of `calibration()` can be named. Without it a
+ * consumer indexing `instruments` gets a circular-inference error rather
+ * than a type.
+ */
+export interface Calibration {
+  fittedAt: string;
+  timeExponent: number;
+  pooledCoverage: number;
+  pooledWorstDecileCoverage: number;
+  meanImpliedEarningsMultiple: number;
+  instruments: Record<string, { overnightSigmaBps: number; impliedEarningsMultiple: number }>;
+}
+
+function loadCalibration(): Calibration | null {
+  try {
+    const raw = readFileSync(new URL("./calibration.json", import.meta.url), "utf8");
+    const parsed = JSON.parse(raw) as Calibration;
+    if (!Number.isFinite(parsed.timeExponent) || !parsed.instruments) return null;
+    return parsed;
+  } catch {
+    // Not calibrated yet. Every value stays a prior and says so, rather than
+    // the absence of a file quietly becoming an unlabelled default.
+    return null;
+  }
+}
+
+/** The calibration run behind the current parameters, if any. */
+export const calibration = (): Calibration | null => FITTED;
+
+export const TIME_EXPONENT = FITTED?.timeExponent ?? 0.15;
+
+/**
+ * Whether the numbers in use were fitted or are still priors.
+ *
+ * Exposed because the distinction is the difference between a band a
+ * liquidation can rely on and one that merely looks like it can.
+ */
+export const parameterSource: ParamSource = FITTED ? "fitted" : "prior";
 
 export interface Instrument {
   ticker: string;
@@ -55,7 +102,37 @@ export const UNIVERSE: readonly Instrument[] = [
   { ticker: "TLT", name: "iShares 20+ Year Treasury", overnightSigmaBps: 57, haltThresholdSec: 300, hasEarnings: false, earningsSigmaMultiple: 1.0 },
 ] as const;
 
-const BY_TICKER = new Map(UNIVERSE.map((i) => [i.ticker, i]));
+/**
+ * The universe with fitted parameters substituted where a calibration run
+ * has produced them.
+ *
+ * The literals above remain the declared fallback, so a deployment with no
+ * calibration.json still runs — it just reports `parameterSource: "prior"`
+ * and should not settle anything.
+ *
+ * The earnings multiple is only ever raised, never lowered, by a fit. The
+ * calibration measures it against the worst decile of gaps, which is a loose
+ * proxy for earnings nights: a decile is 10% of the sample and earnings are
+ * about 1.6% of it, so most of that decile is ordinary volatile nights and
+ * the multiple it implies is a LOWER bound on what a real earnings night
+ * needs. Taking it as an upper bound would narrow the band on exactly the
+ * nights the guard exists for.
+ */
+const CALIBRATED: readonly Instrument[] = UNIVERSE.map((i) => {
+  const fit = FITTED?.instruments[i.ticker];
+  if (!fit) return i;
+  return {
+    ...i,
+    overnightSigmaBps: fit.overnightSigmaBps,
+    earningsSigmaMultiple: i.hasEarnings
+      ? Math.max(i.earningsSigmaMultiple, fit.impliedEarningsMultiple)
+      : 1,
+  };
+});
+
+const BY_TICKER = new Map(CALIBRATED.map((i) => [i.ticker, i]));
+
+export const instruments = (): readonly Instrument[] => CALIBRATED;
 
 export const instrument = (ticker: string): Instrument | undefined =>
   BY_TICKER.get(ticker.toUpperCase());
@@ -71,14 +148,14 @@ export function requireInstrument(ticker: string): Instrument {
  *
  * The exponent is not 0.5. Calendar time is a poor clock for market risk:
  * information arrives around the close and the open, not evenly through a
- * Saturday, so a weekend's realised dispersion is only modestly wider than
- * an overnight gap despite being ~3.7x the clock hours. `TIME_EXPONENT` is a
- * placeholder pending calibration against realised gaps — it is deliberately
- * set above the value a short fit tends to produce, because for the guards
- * in this package an over-wide sigma is the safe direction: it makes the
- * discontinuity test harder to trip, not easier.
+ * Saturday. Fitting against two years of realised gaps returns roughly 0.32,
+ * so a weekend is meaningfully wider than an overnight but nowhere near the
+ * 2.4x that square-root-of-time would demand. Until `npm run calibrate` has
+ * run, the fallback is deliberately low, because for the guards here an
+ * over-wide sigma is the safe direction: it makes the discontinuity test
+ * harder to trip, not easier.
  */
-export const TIME_EXPONENT = 0.15;
+
 
 /** Reference window: a normal overnight close-to-open gap, in hours. */
 export const OVERNIGHT_HOURS = 17.5;

@@ -3,7 +3,7 @@
  * needs so upstream rate limits are not the thing that takes the feed down.
  */
 
-import { UNIVERSE } from "../lib/universe.ts";
+import { UNIVERSE, calibration, parameterSource } from "../lib/universe.ts";
 import { buildVerdict, type Verdict } from "../lib/verdict.ts";
 import { sessionAt, Session } from "../lib/session.ts";
 import { fetchAll, toObservations, enabledProviders } from "../providers/registry.ts";
@@ -202,7 +202,32 @@ export function health(): Record<string, unknown> {
       next: nextEarnings(),
       failures: earningsFailures.length,
     },
+    calibration: calibrationStatus(),
     chain: chainStatus(),
+  };
+}
+
+/**
+ * Whether the bands in use were fitted or are still priors.
+ *
+ * Reported first-class because it is the difference between a band a
+ * liquidation can rely on and one that merely looks like it can, and nothing
+ * else in the payload distinguishes them.
+ */
+function calibrationStatus(): Record<string, unknown> {
+  const c = calibration();
+  if (!c) {
+    return { source: parameterSource, fittedAt: null, note: "not calibrated; every sigma is a prior" };
+  }
+  return {
+    source: parameterSource,
+    fittedAt: c.fittedAt,
+    timeExponent: c.timeExponent,
+    // Out of sample: fitted on the first 60% of the history, scored on the
+    // last 40%. An in-sample figure for a quantile-fitted band is arithmetic
+    // rather than evidence.
+    coverage: c.pooledCoverage,
+    worstDecileCoverage: c.pooledWorstDecileCoverage,
   };
 }
 

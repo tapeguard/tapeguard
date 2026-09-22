@@ -1,9 +1,51 @@
 import { SITE, esc, layout } from "./layout.ts";
 import { Flag, flagNames, hasFlag } from "../lib/flags.ts";
 import type { Verdict } from "../lib/verdict.ts";
-import { UNIVERSE } from "../lib/universe.ts";
+import { calibration, instruments, parameterSource } from "../lib/universe.ts";
 
 const pct = (bps: number): string => (bps / 100).toFixed(2);
+
+/**
+ * States plainly whether the numbers on the page were fitted or assumed.
+ *
+ * Presenting a prior as fitted is not a rounding error; it is a false claim
+ * about how much validation stands behind the number a liquidation reads.
+ */
+function parameterStatus(): string {
+  const c = calibration();
+  if (!c || parameterSource !== "fitted") {
+    return `<p>
+      Every sigma below is a <strong>prior, not a fitted value</strong>, and is labelled
+      as one in the source. Run <code>npm run calibrate</code> before treating any band
+      as validated.
+    </p>`;
+  }
+  return `<p>
+      Fitted against two years of realised close-to-open gaps on
+      ${esc(c.fittedAt.slice(0, 10))}. The band is set from the
+      <strong>95th percentile of the normalised gap</strong> rather than from a standard
+      deviation: a 1.96&times; multiplier only delivers 95% coverage if the distribution
+      is normal, and gap distributions are not &mdash; fitting from the standard
+      deviation returned 90.2% against a stated 95%.
+    </p>
+    <p>
+      Fitted on the first 60% of the history and scored on the last 40%. A band fitted
+      to a quantile covers that quantile in-sample by construction, so an in-sample
+      coverage figure is arithmetic rather than evidence.
+    </p>
+    <div class="grid c4" style="margin:26px 0">
+      <div class="cell"><div class="n">${(c.pooledCoverage * 100).toFixed(1)}%</div>
+        <div class="k">Out-of-sample coverage against a 95% claim.</div></div>
+      <div class="cell"><div class="n">${(c.pooledWorstDecileCoverage * 100).toFixed(0)}%</div>
+        <div class="k">Coverage on the worst decile &mdash; where earnings nights live.
+        This is the number a headline hides.</div></div>
+      <div class="cell"><div class="n">k = ${c.timeExponent.toFixed(3)}</div>
+        <div class="k">Fitted time exponent. Square-root-of-time would be 0.500.</div></div>
+      <div class="cell"><div class="n">${c.meanImpliedEarningsMultiple.toFixed(2)}&times;</div>
+        <div class="k">What the worst decile needs. A lower bound: a decile is 10% of
+        the sample and earnings are ~1.6% of it.</div></div>
+    </div>`;
+}
 
 function stateTag(v: Verdict): string {
   if (v.safe) return `<span class="tag safe">SAFE</span>`;
@@ -201,7 +243,7 @@ guard.getPriceIfSafe(<span class="hi">"NVDA"</span>, 600, EARNINGS_WINDOW | SPLI
 }
 
 export function renderWhy(): string {
-  const rows = UNIVERSE.map(
+  const rows = instruments().map(
     (i) => `<tr>
   <td class="ticker">${i.ticker}</td>
   <td>${i.overnightSigmaBps}bps</td>
@@ -255,12 +297,7 @@ export function renderWhy(): string {
     </p>
 
     <h3 style="margin-top:40px">Parameters</h3>
-    <p>
-      Every sigma below is a <strong>prior, not a fitted value</strong>, and is labelled as
-      one in the source. Presenting a prior as fitted is not a rounding error; it is a
-      false claim about how much validation stands behind the number a liquidation
-      reads.
-    </p>
+    ${parameterStatus()}
     <div class="board-scroll"><table class="board">
       <thead><tr><th>Instrument</th><th>Overnight &sigma;</th><th>Halt threshold</th><th>Earnings &sigma;</th></tr></thead>
       <tbody>${rows}</tbody>

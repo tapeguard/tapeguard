@@ -10,11 +10,22 @@ import {
   type CorporateAction,
 } from "../src/lib/guards/corpaction.ts";
 
-const NVDA = requireInstrument("NVDA"); // overnight sigma 150bps, halt 120s
+const NVDA = requireInstrument("NVDA"); // for haltThresholdSec, which is not fitted
 
-// At exactly one overnight window the time scaling is 1, so sigma in log
-// terms is the quoted bps directly: 150bps -> 0.0150. Every figure below is
-// hand-checkable against that.
+/**
+ * Fixed sigmas, deliberately not read from the universe.
+ *
+ * Those are calibration output and move every time `npm run calibrate` runs
+ * against fresh data. A test of the guard's logic that reads them is a test
+ * that fails for a reason having nothing to do with the logic — and worse,
+ * one that could start passing again for the same reason.
+ *
+ * At exactly one overnight window the time scaling is 1, so sigma in log
+ * terms is the quoted bps directly: 150bps -> 0.0150. Every figure below is
+ * hand-checkable against that.
+ */
+const SIGMA_VOLATILE = 150; // a volatile single name
+const SIGMA_BROAD = 55; // a broad-market ETF
 const OVERNIGHT = 17.5;
 
 // ---------------------------------------------------------------------------
@@ -26,7 +37,7 @@ test("a 10:1 split is not a 90% crash", () => {
     ticker: "NVDA",
     anchorPrice: 1000,
     newPrice: 100,
-    overnightSigmaBps: NVDA.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_VOLATILE,
     darkHours: OVERNIGHT,
   });
   // |ln(0.1)| / 0.015 = 153 sigma. Against a +/-2.9% band, this is the move
@@ -45,7 +56,7 @@ test("a split detected through a real move on top of it", () => {
     ticker: "NVDA",
     anchorPrice: 1000,
     newPrice: 101,
-    overnightSigmaBps: NVDA.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_VOLATILE,
     darkHours: OVERNIGHT,
   });
   assert.equal(v.hypothesis?.label, "10:1 forward split");
@@ -59,7 +70,7 @@ test("a reverse split is caught in the other direction", () => {
     ticker: "NVDA",
     anchorPrice: 2,
     newPrice: 20,
-    overnightSigmaBps: NVDA.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_VOLATILE,
     darkHours: OVERNIGHT,
   });
   assert.equal(v.hypothesis?.label, "1:10 reverse split");
@@ -71,7 +82,7 @@ test("an ordinary move raises nothing", () => {
     ticker: "NVDA",
     anchorPrice: 100,
     newPrice: 101,
-    overnightSigmaBps: NVDA.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_VOLATILE,
     darkHours: OVERNIGHT,
   });
   assert.equal(v.flags, Flag.NONE);
@@ -87,7 +98,7 @@ test("a genuine crash is refused, but not called a split", () => {
     ticker: "NVDA",
     anchorPrice: 100,
     newPrice: 55,
-    overnightSigmaBps: NVDA.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_VOLATILE,
     darkHours: OVERNIGHT,
   });
   assert.ok(v.rawSigma > 35);
@@ -105,7 +116,7 @@ test("a fractional split is refused but not claimed", () => {
     ticker: "NVDA",
     anchorPrice: 180,
     newPrice: 135,
-    overnightSigmaBps: NVDA.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_VOLATILE,
     darkHours: OVERNIGHT,
   });
   assert.ok(hasFlag(v.flags, Flag.DISCONTINUITY), "still refused: not an ordinary gap");
@@ -122,7 +133,7 @@ test("a whole-ratio split is decisive where a fractional one is not", () => {
       ticker: "NVDA",
       anchorPrice: anchor,
       newPrice: next,
-      overnightSigmaBps: NVDA.overnightSigmaBps,
+      overnightSigmaBps: SIGMA_VOLATILE,
       darkHours: OVERNIGHT,
     }).hypothesis?.ratioSigma ?? 0;
 
@@ -134,15 +145,14 @@ test("a whole-ratio split is decisive where a fractional one is not", () => {
 });
 
 test("a low-volatility instrument trips at a smaller move", () => {
-  // SPY's overnight sigma is 55bps, so 8 sigma is a ~4.4% gap. The threshold
+  // At a 55bps overnight sigma, 8 sigma is a ~4.4% gap. The threshold
   // is per-instrument for exactly this reason: one global percentage would be
   // numb on SPY and hysterical on HOOD.
-  const spy = requireInstrument("SPY");
   const quiet = checkDiscontinuity({
     ticker: "SPY",
     anchorPrice: 600,
     newPrice: 618, // +3.0%, 5.4 sigma
-    overnightSigmaBps: spy.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_BROAD,
     darkHours: OVERNIGHT,
   });
   assert.equal(quiet.flags, Flag.NONE);
@@ -151,7 +161,7 @@ test("a low-volatility instrument trips at a smaller move", () => {
     ticker: "SPY",
     anchorPrice: 600,
     newPrice: 540, // -10%, 19 sigma
-    overnightSigmaBps: spy.overnightSigmaBps,
+    overnightSigmaBps: SIGMA_BROAD,
     darkHours: OVERNIGHT,
   });
   assert.ok(hasFlag(violent.flags, Flag.DISCONTINUITY));
@@ -163,7 +173,7 @@ test("a non-positive price is refused rather than divided by", () => {
       ticker: "NVDA",
       anchorPrice: bad,
       newPrice: 100,
-      overnightSigmaBps: NVDA.overnightSigmaBps,
+      overnightSigmaBps: SIGMA_VOLATILE,
       darkHours: OVERNIGHT,
     });
     assert.ok(hasFlag(v.flags, Flag.DISCONTINUITY), `anchor ${bad} must refuse`);

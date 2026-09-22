@@ -1,0 +1,202 @@
+{
+  "fittedAt": "2026-09-22T09:04:03.431Z",
+  "source": "yahoo daily bars, 2y",
+  "method": "robust sigma from MAD*1.4826, normalised to a 17.5h reference with the pooled time exponent; coverage replayed against the band the model would have published at reopen",
+  "timeExponent": 0.322,
+  "timeExponentBuckets": [
+    {
+      "hours": 18,
+      "n": 1856,
+      "ratio": 0.9370978283552488
+    },
+    {
+      "hours": 42,
+      "n": 32,
+      "ratio": 1.0849462848718412
+    },
+    {
+      "hours": 66,
+      "n": 408,
+      "ratio": 1.3931731632606212
+    },
+    {
+      "hours": 90,
+      "n": 40,
+      "ratio": 1.9547063674702836
+    }
+  ],
+  "holdout": "fitted on the first 60% of gaps, scored on the last 40%",
+  "pooledCoverage": 0.97,
+  "pooledWorstDecileCoverage": 0.7,
+  "meanImpliedEarningsMultiple": 1.43,
+  "instruments": {
+    "HOOD": {
+      "ticker": "HOOD",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 274.7,
+      "robustSigmaBps": 192.9,
+      "classicalSigmaBps": 290.4,
+      "outlierRatio": 1.51,
+      "worstGapPct": 12.67,
+      "coverage": 0.955,
+      "coverageCI": [
+        0.9167024063390321,
+        0.9761477282752958
+      ],
+      "worstDecileCoverage": 0.55,
+      "worstDecileCI": [
+        0.34208200830759966,
+        0.741804979142907
+      ],
+      "impliedEarningsMultiple": 1.84
+    },
+    "COIN": {
+      "ticker": "COIN",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 222.5,
+      "robustSigmaBps": 215,
+      "classicalSigmaBps": 266.8,
+      "outlierRatio": 1.24,
+      "worstGapPct": 8.56,
+      "coverage": 0.925,
+      "coverageCI": [
+        0.8799554020266798,
+        0.9540254929427476
+      ],
+      "worstDecileCoverage": 0.25,
+      "worstDecileCI": [
+        0.11186005278940306,
+        0.4687050099580635
+      ],
+      "impliedEarningsMultiple": 1.74
+    },
+    "NVDA": {
+      "ticker": "NVDA",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 172.8,
+      "robustSigmaBps": 141.9,
+      "classicalSigmaBps": 198.2,
+      "outlierRatio": 1.4,
+      "worstGapPct": 6.11,
+      "coverage": 0.99,
+      "coverageCI": [
+        0.9642775148038205,
+        0.9972533993962251
+      ],
+      "worstDecileCoverage": 0.9,
+      "worstDecileCI": [
+        0.6989617935882066,
+        0.9721341060158467
+      ],
+      "impliedEarningsMultiple": 1.08
+    },
+    "TSLA": {
+      "ticker": "TSLA",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 237.1,
+      "robustSigmaBps": 164.9,
+      "classicalSigmaBps": 248.9,
+      "outlierRatio": 1.51,
+      "worstGapPct": 9.24,
+      "coverage": 0.99,
+      "coverageCI": [
+        0.9642775148038205,
+        0.9972533993962251
+      ],
+      "worstDecileCoverage": 0.9,
+      "worstDecileCI": [
+        0.6989617935882066,
+        0.9721341060158467
+      ],
+      "impliedEarningsMultiple": 1.09
+    },
+    "AAPL": {
+      "ticker": "AAPL",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 104.9,
+      "robustSigmaBps": 59.6,
+      "classicalSigmaBps": 125.5,
+      "outlierRatio": 2.11,
+      "worstGapPct": 8.97,
+      "coverage": 0.99,
+      "coverageCI": [
+        0.9642775148038205,
+        0.9972533993962251
+      ],
+      "worstDecileCoverage": 0.9,
+      "worstDecileCI": [
+        0.6989617935882066,
+        0.9721341060158467
+      ],
+      "impliedEarningsMultiple": 1.48
+    },
+    "MSTR": {
+      "ticker": "MSTR",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 240.9,
+      "robustSigmaBps": 230.9,
+      "classicalSigmaBps": 291.1,
+      "outlierRatio": 1.26,
+      "worstGapPct": 8.26,
+      "coverage": 0.94,
+      "coverageCI": [
+        0.8980673646931491,
+        0.9653481500987285
+      ],
+      "worstDecileCoverage": 0.4,
+      "worstDecileCI": [
+        0.21880396741419272,
+        0.613422057684794
+      ],
+      "impliedEarningsMultiple": 1.71
+    },
+    "SPY": {
+      "ticker": "SPY",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 61.9,
+      "robustSigmaBps": 38.4,
+      "classicalSigmaBps": 71,
+      "outlierRatio": 1.85,
+      "worstGapPct": 2.57,
+      "coverage": 0.98,
+      "coverageCI": [
+        0.9497121344948062,
+        0.9921956998236059
+      ],
+      "worstDecileCoverage": 0.8,
+      "worstDecileCI": [
+        0.5839782779742402,
+        0.9193436467288001
+      ],
+      "impliedEarningsMultiple": 1.41
+    },
+    "TLT": {
+      "ticker": "TLT",
+      "fitGaps": 299,
+      "holdoutGaps": 200,
+      "overnightSigmaBps": 56.8,
+      "robustSigmaBps": 63.1,
+      "classicalSigmaBps": 66.5,
+      "outlierRatio": 1.05,
+      "worstGapPct": 1.4,
+      "coverage": 0.99,
+      "coverageCI": [
+        0.9642775148038205,
+        0.9972533993962251
+      ],
+      "worstDecileCoverage": 0.9,
+      "worstDecileCI": [
+        0.6989617935882066,
+        0.9721341060158467
+      ],
+      "impliedEarningsMultiple": 1.12
+    }
+  }
+}

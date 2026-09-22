@@ -115,6 +115,48 @@ This makes the two detectors complementary rather than redundant. The feedless
 one claims only what it can prove; the feed resolves the ratios that are
 indistinguishable from ordinary bad news.
 
+## Calibration
+
+```
+npm run calibrate
+```
+
+Three choices make the output defensible rather than merely produced.
+
+**The band is fitted to the quantile it claims, not to a moment.** A 1.96x
+multiplier delivers 95% coverage only if the distribution is normal, and gap
+distributions are not. Fitting from the standard deviation returned **90.2%**
+against a stated 95%, so the band is set directly from the 95th percentile of
+the normalised gap — the quantity the claim is actually about.
+
+**Fitted on the first 60%, scored on the last 40%.** A band fitted to a
+quantile covers that quantile in-sample by construction, so an in-sample
+coverage figure is arithmetic rather than evidence. The holdout is the only
+version of the number that can fail.
+
+**Coverage is scored on the worst decile as well as overall**, because
+earnings nights are ~1.6% of the sample and a model can miss every one of them
+while reporting 95%. It is the only way the headline can be contradicted — and
+it is:
+
+```
+pooled coverage        97.00%   against a 95% claim
+pooled worst decile    70.00%   <- where earnings nights live
+time exponent  k =      0.322   sqrt-of-time would be 0.500
+mean implied multiple   1.43x   what the worst decile needs
+```
+
+The exponent is fitted, not assumed. Calendar time is a poor clock for market
+risk — information arrives around the close and the open, not evenly through a
+Saturday — so a weekend is meaningfully wider than an overnight but nowhere
+near the 1.9x that square-root-of-time would demand.
+
+The implied multiple is a **lower bound**, and the code treats it as one: a fit
+may raise an instrument's earnings multiple, never lower it. A decile is 10% of
+the sample and earnings are about 1.6% of it, so most of that decile is
+ordinary volatile nights. Reading it as an upper bound would narrow the band on
+exactly the nights the guard exists for.
+
 ## Feeds, not vendors
 
 Three vendors agreeing on one IEX tape is one source wearing three hats. The
@@ -258,10 +300,16 @@ Stated here rather than buried, because this list is what a consumer should
 decide from.
 
 - The contracts are **unaudited**.
-- Every sigma is a documented **prior, not a fitted value**. Calibration against
-  realised gaps has not run. Presenting a prior as fitted is not a rounding
-  error; it is a false claim about how much validation stands behind the number
-  a liquidation reads.
+- Sigmas are **fitted** against two years of realised gaps, out of sample. The
+  fit is on Yahoo daily bars, which is fine for building and is not a licensed
+  production source. `/api/health` reports `calibration.source`, and it says
+  `prior` when no fit has run — presenting a prior as fitted is not a rounding
+  error, it is a false claim about how much validation stands behind the
+  number a liquidation reads.
+- Worst-decile coverage is **70%**. The band is calibrated for ordinary nights
+  and the earnings multiple covers the rest; until the multiple is fitted
+  against labelled earnings dates rather than a decile proxy, the tail is the
+  weakest part of the model.
 - The default price source is **not licensed for commercial redistribution**.
   Add a licensed vendor before production.
 - A one-feed deployment **cannot corroborate a halt** and says so.
@@ -272,9 +320,9 @@ decide from.
 
 ### Not built yet
 
-- `npm run calibrate` — fitting the sigmas against realised gaps. Until it
-  runs, every sigma is a prior and the bands are not validated numbers.
-- A published track record scored from chain logs.
+- A published track record scored from chain logs. The backtest below is
+  evidence about the past; it is not evidence that the thing running in
+  production is still right.
 
 **Do not settle real money against this.**
 

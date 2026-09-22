@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Session, etWallClockToUnix } from "../src/lib/session.ts";
 import { Flag, Provenance, hasFlag } from "../src/lib/flags.ts";
-import { requireInstrument } from "../src/lib/universe.ts";
+import { requireInstrument, sigmaOverHours } from "../src/lib/universe.ts";
 import { checkEarnings, type EarningsEvent } from "../src/lib/guards/earnings.ts";
 import { buildVerdict, NO_CLAIM_BPS, GAP_FLOOR_BPS } from "../src/lib/verdict.ts";
 import type { SourceObservation } from "../src/lib/guards/halt.ts";
@@ -157,8 +157,13 @@ test("a shut tape is DERIVED and says the price was never printed", () => {
   assert.equal(v.provenance, Provenance.DERIVED);
   assert.equal(v.safe, false);
   assert.equal(v.darkHours, 19);
-  // 1.96 * sigma(150bps over 19h) ~ 298bps.
-  assert.ok(v.confidenceBps > 280 && v.confidenceBps < 320, `band ${v.confidenceBps}`);
+  // Checked against the formula rather than a constant: the sigma behind it
+  // is calibration output, so pinning the number would pin the fit.
+  const expected = 1.96 * sigmaOverHours(requireInstrument("NVDA").overnightSigmaBps, 19);
+  assert.ok(
+    Math.abs(v.confidenceBps - expected) <= 1,
+    `band ${v.confidenceBps} should be ~${expected.toFixed(1)}`,
+  );
   assert.match(v.reasons.join(" "), /model output, not an observed print/);
 });
 
