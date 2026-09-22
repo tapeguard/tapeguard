@@ -187,6 +187,42 @@ npm run dev       # http://localhost:8080
 the unit tests missed — a unit test asserts what you thought to ask, a scenario
 dump shows what the thing actually says.
 
+## The relayer
+
+`src/server/relayer.ts` builds verdicts, signs them and posts them. Verified
+end to end against a local chain: eight verdicts, one transaction, 717,729
+gas, read back and refused correctly by `getPriceIfSafe`.
+
+```
+posting 8/8: HOOD (never posted), COIN (never posted), NVDA (never posted), ...
+  success 0xcd8b43d8... gas 717729
+
+NVDA  22738000000  band 281  flags 16 (SINGLE_SOURCE)  DERIVED  PRE  1 source
+getPriceIfSafe("NVDA", 600)  ->  revert NotLive("NVDA", 1)
+```
+
+Opting into a flag does not get past the provenance check, which is the point:
+the tape was shut, so no price was safe regardless of which flags a caller was
+willing to accept.
+
+### What is worth posting
+
+The materiality filter has one rule that matters: **a change of flags or
+provenance always posts**, however little the price moved.
+
+A filter keyed on price and band alone is exactly backwards for this product.
+A stock halts, or goes ex-split tomorrow, and the number does not move at all
+— so a price-only filter suppresses the update precisely when the feed has
+something urgent to say, and the chain keeps serving a clean `TRADED` verdict
+straight through the event the guards exist to catch.
+
+```
+RELAY_ONCE=true RELAY_DRY=true node src/server/relayer.ts
+```
+
+`RELAY_DRY` does everything except send, so a new deployment can be checked
+before the first test of it is also an irreversible mainnet write.
+
 ## Deploying
 
 ```bash
@@ -223,9 +259,6 @@ decide from.
 
 ### Not built yet
 
-- `src/chain/` — EIP-712 signing and contract writes.
-- `src/server/relayer.ts` — the posting loop. The systemd unit exists; the
-  process does not.
 - An earnings **provider**. The guard and its tests are done and
   `setEarnings()` accepts events, but nothing populates it yet, so
   `EARNINGS_WINDOW` never fires in production.

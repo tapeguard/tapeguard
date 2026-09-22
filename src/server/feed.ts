@@ -7,6 +7,7 @@ import { UNIVERSE } from "../lib/universe.ts";
 import { buildVerdict, type Verdict } from "../lib/verdict.ts";
 import { sessionAt, Session } from "../lib/session.ts";
 import { fetchAll, toObservations, enabledProviders } from "../providers/registry.ts";
+import { chainConfig, signerAddress, writeBlockers } from "../chain/client.ts";
 import { previousClose, corporateActions } from "../providers/yahoo.ts";
 import type { CorporateAction } from "../lib/guards/corpaction.ts";
 import type { EarningsEvent } from "../lib/guards/earnings.ts";
@@ -143,5 +144,31 @@ export function health(): Record<string, unknown> {
     independentFeeds: feeds.size,
     canCorroborateHalts: feeds.size >= 2,
     cachedVerdicts: verdictCache.size,
+    chain: chainStatus(),
+  };
+}
+
+/**
+ * What the chain side can and cannot do right now.
+ *
+ * `blockers` is a list rather than a boolean so a misconfigured deployment
+ * names what is missing, instead of presenting as a feed that simply never
+ * updates — the two look identical from outside and have entirely different
+ * fixes.
+ */
+function chainStatus(): Record<string, unknown> {
+  const cfg = chainConfig();
+  const blockers = writeBlockers(cfg);
+  return {
+    chainId: cfg.chainId,
+    contract: cfg.address,
+    signer: cfg.signerKey ? signerAddress(cfg.signerKey) : null,
+    relayer: cfg.relayerKey ? signerAddress(cfg.relayerKey) : null,
+    canWrite: blockers.length === 0,
+    blockers,
+    // One key today. The contract takes a threshold, so raising it is a
+    // transaction rather than a redeploy — but until it is raised, saying
+    // anything other than 1 would be a claim this deployment cannot back.
+    signerThreshold: 1,
   };
 }
