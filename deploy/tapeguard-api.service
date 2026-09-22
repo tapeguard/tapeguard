@@ -1,0 +1,36 @@
+[Unit]
+Description=tapeguard API and site
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tapeguard
+Group=tapeguard
+WorkingDirectory=/srv/tapeguard
+EnvironmentFile=/srv/tapeguard/.env
+ExecStart=/usr/bin/node src/server/http.ts
+Restart=always
+RestartSec=3
+
+# This unit holds no keys. It serves the site and the read API; the relayer
+# is a separate unit so that a crash loop in one cannot take down the other,
+# and so the process exposed to the internet is not the process holding a
+# funded wallet.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/tapeguard/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=512M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tapeguard-api
+
+[Install]
+WantedBy=multi-user.target

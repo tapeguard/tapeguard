@@ -1,0 +1,34 @@
+[Unit]
+Description=tapeguard relayer (posts signed verdicts on chain)
+After=network-online.target tapeguard-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tapeguard
+Group=tapeguard
+WorkingDirectory=/srv/tapeguard
+EnvironmentFile=/srv/tapeguard/.env
+ExecStart=/usr/bin/node src/server/relayer.ts
+Restart=always
+RestartSec=10
+
+# A long-lived process on a VM rather than a scheduled function. This holds
+# a funded key and must not be restarted on every invocation, and it is not
+# subject to a host's cron-frequency limits -- the failure mode being avoided
+# is a platform rejecting the schedule at deploy time while the last good
+# build keeps serving a feed that has quietly stopped updating.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/tapeguard/data
+RestrictAddressFamilies=AF_INET AF_INET6
+MemoryMax=384M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tapeguard-relayer
+
+[Install]
+WantedBy=multi-user.target
