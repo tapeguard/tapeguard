@@ -10,3 +10,6 @@ data/
 # information -- regenerate with `forge build && npm run abi`.
 out/
 cache/
+
+# Generated video work files; the raw clips and the final cut are kept.
+brand/video/work/

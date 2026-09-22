@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#000000"/>
+  <!-- the tape: three rows, the middle one interrupted -->
+  <rect x="104" y="150" width="304" height="42" fill="#ffffff"/>
+  <rect x="104" y="235" width="182" height="42" fill="#ffffff"/>
+  <rect x="104" y="320" width="243" height="42" fill="#ffffff"/>
+  <rect x="330" y="235" width="78"  height="42" fill="#ffffff" opacity="0.28"/>
+</svg>

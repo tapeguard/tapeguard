@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1500" viewBox="0 0 1500 1500">
+  <!-- Square canvas with the 500px band centred: qlmanage preserves aspect
+       against the longest side, so a 1500x500 document renders scaled and
+       cropped. Crop the centre afterwards. -->
+  <rect width="1500" height="1500" fill="#000000"/>
+  <g transform="translate(0,500)">
+    <rect width="1500" height="500" fill="#000000"/>
+
+    <rect x="92"  y="150" width="150" height="20" fill="#ffffff"/>
+    <rect x="92"  y="190" width="90"  height="20" fill="#ffffff"/>
+    <rect x="92"  y="230" width="120" height="20" fill="#ffffff"/>
+    <rect x="200" y="190" width="42"  height="20" fill="#ffffff" opacity="0.28"/>
+
+    <text x="300" y="196" font-family="Menlo, monospace" font-size="46" fill="#ffffff">tapeguard</text>
+    <text x="302" y="248" font-family="Menlo, monospace" font-size="24" fill="#7a7a7a">The price, and the reason not to use it.</text>
+    <text x="302" y="300" font-family="Menlo, monospace" font-size="19" fill="#4a4a4a">splits &#183; halts &#183; earnings &#183; feed independence</text>
+
+    <text x="1408" y="196" font-family="Menlo, monospace" font-size="20" fill="#4a4a4a" text-anchor="end">Robinhood Chain 4663</text>
+    <text x="1408" y="230" font-family="Menlo, monospace" font-size="20" fill="#ff5f56" text-anchor="end">refuses by default</text>
+    <text x="1408" y="300" font-family="Menlo, monospace" font-size="19" fill="#4a4a4a" text-anchor="end">tapeguard.xyz</text>
+  </g>
+</svg>
