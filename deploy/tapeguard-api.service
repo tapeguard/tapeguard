@@ -9,7 +9,7 @@ User=tapeguard
 Group=tapeguard
 WorkingDirectory=/srv/tapeguard
 EnvironmentFile=/srv/tapeguard/.env
-ExecStart=/usr/bin/node src/server/http.ts
+ExecStart=/usr/bin/node --experimental-strip-types src/server/http.ts
 Restart=always
 RestartSec=3
 

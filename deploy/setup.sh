@@ -16,14 +16,27 @@ echo "==> packages"
 apt-get update -qq
 apt-get install -y -qq curl ca-certificates git nginx ufw
 
-# Node 24+: this project has no build step and runs TypeScript directly
-# through Node's own type stripping, which is unflagged from 23.6 onward.
-if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 24 ]]; then
-  echo "==> node 24"
-  curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+# Node 22.6+ is enough: this project has no build step and runs TypeScript
+# through Node's own type stripping, which the units invoke explicitly with
+# --experimental-strip-types so it works either side of 23.6.
+#
+# Deliberately does NOT upgrade an existing Node. This box may run other
+# services, and replacing their runtime to satisfy ours is a way to take
+# down something unrelated while installing something new.
+if ! command -v node >/dev/null 2>&1; then
+  echo "==> node 22 (none installed)"
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
   apt-get install -y -qq nodejs
+else
+  MAJOR=$(node -p 'process.versions.node.split(".")[0]')
+  MINOR=$(node -p 'process.versions.node.split(".")[1]')
+  if [ "$MAJOR" -lt 22 ] || { [ "$MAJOR" -eq 22 ] && [ "$MINOR" -lt 6 ]; }; then
+    echo "    node $(node -v) is too old and other services may depend on it."
+    echo "    Upgrade it yourself, or run this project under a newer node."
+    exit 1
+  fi
+  echo "    reusing node $(node -v), untouched"
 fi
-node -v
 
 echo "==> user and directories"
 id -u "$APP_USER" >/dev/null 2>&1 || useradd --system --home "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
