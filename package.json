@@ -19,7 +19,8 @@
     "abi": "node scripts/abi.mjs",
     "calibrate": "node scripts/calibrate.ts",
     "doctor": "node scripts/doctor.ts",
-    "deploy": "node scripts/deploy.ts"
+    "deploy": "node scripts/deploy.ts",
+    "verify:source": "node scripts/verify-source.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
