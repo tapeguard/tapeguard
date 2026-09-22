@@ -31,7 +31,24 @@ mkdir -p "$APP_DIR/data"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
 echo "==> firewall"
-ufw allow OpenSSH >/dev/null
+# Allow the port SSH is ACTUALLY on before enabling the firewall.
+#
+# `ufw allow OpenSSH` only opens 22. On a host whose sshd was moved — which
+# is common hardening advice, and which Hostinger images sometimes ship —
+# enabling ufw after allowing only 22 locks you out of your own machine,
+# and the lockout happens on the same command that caused it.
+#
+# Two sources, because either alone can be wrong: the port sshd is
+# configured for, and the port this very session arrived on.
+SSH_PORTS=$(grep -oPi '^\s*Port\s+\K[0-9]+' /etc/ssh/sshd_config 2>/dev/null | sort -u || true)
+CURRENT_PORT=$(echo "${SSH_CONNECTION:-}" | awk '{print $4}')
+[ -n "$CURRENT_PORT" ] && SSH_PORTS=$(printf '%s\n%s\n' "$SSH_PORTS" "$CURRENT_PORT" | sort -u)
+[ -z "$(echo "$SSH_PORTS" | tr -d '[:space:]')" ] && SSH_PORTS=22
+
+for port in $SSH_PORTS; do
+  echo "    allowing ssh on $port"
+  ufw allow "$port"/tcp >/dev/null
+done
 ufw allow 'Nginx Full' >/dev/null
 ufw --force enable >/dev/null
 # 8080 is deliberately NOT opened. The service binds 127.0.0.1 and is only
