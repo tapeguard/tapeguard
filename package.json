@@ -15,7 +15,8 @@
     "test:guards": "node --test test/guards.test.ts",
     "demo": "node scripts/demo.ts",
     "dev": "node src/server/http.ts",
-    "start": "node src/server/http.ts"
+    "start": "node src/server/http.ts",
+    "abi": "node scripts/abi.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

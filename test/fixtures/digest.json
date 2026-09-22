@@ -1,0 +1,20 @@
+{
+  "chainId": 31337,
+  "verifyingContract": "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f",
+  "signer": "0xe05fcC23807536bEe418f142D19fa0d21BB0cfF7",
+  "ticker": "NVDA",
+  "domainSeparator": "0x960d798a28f9354814280134ea40b73187590eb2e0e3909d064447c5a483497a",
+  "digest": "0x1423f483008a777bd816fb9fcf1bf7e92d22a9fb8b2ffd60e75c3c218aa1d8eb",
+  "signature": "0x86e53467b474c2126ac7ed6c5bb1e28e7ab2c1c4d98252d0182bcf0fdbd81b0f6181e043519f9d95f24b97c13a5f48dde9e0ffe248ee100264025cc243e3462e1b",
+  "verdict": {
+    "price": "22738000000",
+    "publishedAt": "1790065269",
+    "lastTradeTime": "1790020800",
+    "confidenceBps": 280,
+    "flags": 5,
+    "provenance": 1,
+    "session": 1,
+    "maxDeviationBps": 11,
+    "sourceCount": 2
+  }
+}
