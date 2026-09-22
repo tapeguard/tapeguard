@@ -1,0 +1,1 @@
+{"version":1,"failures":[{"contract":"contracts/test/TapeGuard.t.sol:TapeGuardTest","test":"test_RefusesAnythingThatIsNotALivePrint"}]}
