@@ -40,8 +40,17 @@ export interface PriceProvider {
   quote(ticker: string, signal: AbortSignal): Promise<ProviderQuote>;
 }
 
-/** Default per-provider timeout. A slow upstream must not stall the feed. */
-export const PROVIDER_TIMEOUT_MS = 4000;
+/**
+ * Default per-provider timeout.
+ *
+ * Eight seconds, not four. Providers are fetched in parallel, so this bounds
+ * one round rather than accumulating across the universe — and four seconds
+ * was aggressive enough that an ordinarily slow provider timed out on about
+ * half of reads, which surfaced as SINGLE_SOURCE on rows that had two
+ * perfectly good sources. Dropping a source to save four seconds is the
+ * wrong trade when the whole product is about having two.
+ */
+export const PROVIDER_TIMEOUT_MS = 8000;
 
 /** Distinct underlying feeds among a set of providers. */
 export const distinctFeeds = (providers: readonly PriceProvider[]): number =>
