@@ -69,11 +69,24 @@ ufw --force enable >/dev/null
 # hitting the port directly.
 
 echo "==> nginx"
+# Validate BEFORE enabling, and roll the symlink back if it does not hold.
+#
+# nginx config is global: a broken file in sites-enabled blocks every reload
+# on the box, including for sites that have nothing to do with this one. On a
+# host already serving other projects, linking first and testing second means
+# the failure lands on them.
 install -m 644 "$(dirname "$0")/nginx.conf" /etc/nginx/sites-available/tapeguard
 ln -sf /etc/nginx/sites-available/tapeguard /etc/nginx/sites-enabled/tapeguard
-rm -f /etc/nginx/sites-enabled/default
-nginx -t
-systemctl reload nginx
+if nginx -t 2>/dev/null; then
+  systemctl reload nginx
+  echo "    nginx reloaded with the tapeguard site"
+else
+  rm -f /etc/nginx/sites-enabled/tapeguard
+  echo "    nginx config REJECTED; the site was not enabled and nothing changed:"
+  nginx -t || true
+  exit 1
+fi
+# Deliberately NOT removing the default site or anything else already here.
 
 echo "==> systemd"
 install -m 644 "$(dirname "$0")/tapeguard-api.service" /etc/systemd/system/
