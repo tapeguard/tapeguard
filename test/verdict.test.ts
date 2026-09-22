@@ -252,6 +252,27 @@ test("an earnings move is widened, not called a corporate action", () => {
   assert.ok(hasFlag(splitOnEarningsNight.flags, Flag.SPLIT_PENDING));
 });
 
+test("an earnings window widens the band by exactly the instrument's multiple", () => {
+  // The flag on its own is not the product; the band it produces is. Pinning
+  // the ratio catches a multiplier that is read but never applied, which a
+  // flag assertion alone would pass straight over.
+  const observations = [src("alpaca", 180, FRI_CLOSE), src("finnhub", 180, FRI_CLOSE)];
+  const args = { ticker: "NVDA", now: MON_PRE, anchorPrice: 180, observations } as const;
+
+  const plain = buildVerdict(args);
+  const onEarnings = buildVerdict({ ...args, earningsEvents: [nvdaEarnings()] });
+
+  assert.equal(hasFlag(plain.flags, Flag.EARNINGS_WINDOW), false);
+  assert.ok(hasFlag(onEarnings.flags, Flag.EARNINGS_WINDOW));
+
+  const multiple = requireInstrument("NVDA").earningsSigmaMultiple;
+  const ratio = onEarnings.confidenceBps / plain.confidenceBps;
+  assert.ok(
+    Math.abs(ratio - multiple) < 0.02,
+    `band ratio ${ratio.toFixed(3)} should be the 3.5x earnings multiple`,
+  );
+});
+
 test("the band never tightens because a session label changed", () => {
   // The failure this rules out: at 04:00 the label flips CLOSED -> PRE while
   // the anchor is still Friday's close and nothing has printed. A formula

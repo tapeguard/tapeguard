@@ -9,7 +9,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
-import { allVerdicts, health, verdictFor } from "./feed.ts";
+import { allVerdicts, health, refreshEarnings, verdictFor } from "./feed.ts";
 import { renderHome, renderWhy } from "./pages.ts";
 import { renderDocs } from "./docs.ts";
 import { SITE } from "./layout.ts";
@@ -145,4 +145,10 @@ createServer((req, res) => {
   });
 }).listen(PORT, HOST, () => {
   console.log(`tapeguard listening on http://${HOST}:${PORT}`);
+
+  // Warm the earnings calendar in the background. Not awaited: a slow or
+  // unreachable calendar must delay a widened band, never the port opening.
+  refreshEarnings()
+    .then(() => console.log("earnings calendar loaded"))
+    .catch((err) => console.error("earnings refresh failed:", err?.message ?? err));
 });

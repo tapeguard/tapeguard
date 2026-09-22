@@ -9,6 +9,7 @@ import { sessionAt, Session } from "../lib/session.ts";
 import { fetchAll, toObservations, enabledProviders } from "../providers/registry.ts";
 import { chainConfig, signerAddress, writeBlockers } from "../chain/client.ts";
 import { previousClose, corporateActions } from "../providers/yahoo.ts";
+import { fetchEarnings } from "../providers/earnings.ts";
 import type { CorporateAction } from "../lib/guards/corpaction.ts";
 import type { EarningsEvent } from "../lib/guards/earnings.ts";
 
@@ -64,8 +65,55 @@ async function actionsFor(ticker: string, nowMs: number): Promise<CorporateActio
   }
 }
 
+/**
+ * Earnings for the whole universe, refreshed on a timer rather than on read.
+ *
+ * The calendar is indexed by date, so covering the universe costs a request
+ * per day walked. Doing that inside a page render would put a dozen HTTP
+ * round trips on the critical path of every cold request, to learn something
+ * that changes when a company announces a date — not continuously.
+ *
+ * So reads are served from cache and a stale cache triggers a refresh in the
+ * background. The first read after a restart sees an empty calendar, which
+ * costs a widened band on one tick and never blocks a response.
+ */
+const EARNINGS_TTL_MS = 6 * 60 * 60_000;
+let earningsAt = 0;
+let earningsInFlight: Promise<void> | null = null;
+export let earningsFailures: Array<{ date: string; error: string }> = [];
+
 export function setEarnings(ticker: string, events: EarningsEvent[], nowMs = Date.now()): void {
   earningsCache.set(ticker.toUpperCase(), { value: events, at: nowMs });
+}
+
+export async function refreshEarnings(): Promise<void> {
+  const tickers = UNIVERSE.map((i) => i.ticker);
+  const { events, failures } = await fetchEarnings(tickers);
+  earningsFailures = failures;
+
+  // Replace wholesale. A symbol whose release was cancelled or moved out of
+  // the window must lose its event, and merging would keep it forever.
+  for (const t of tickers) earningsCache.set(t, { value: [], at: Date.now() });
+  for (const e of events) {
+    const slot = earningsCache.get(e.ticker);
+    if (slot) slot.value.push(e);
+  }
+  earningsAt = Date.now();
+}
+
+function earningsFor(ticker: string): EarningsEvent[] {
+  if (Date.now() - earningsAt > EARNINGS_TTL_MS && !earningsInFlight) {
+    earningsInFlight = refreshEarnings()
+      .catch((err) => {
+        // A calendar that cannot be read must not take the feed down. The
+        // cost is a band that is not widened, which is reported in health.
+        console.error("earnings refresh failed:", err instanceof Error ? err.message : err);
+      })
+      .finally(() => {
+        earningsInFlight = null;
+      });
+  }
+  return earningsCache.get(ticker.toUpperCase())?.value ?? [];
 }
 
 export async function verdictFor(ticker: string, force = false): Promise<Verdict> {
@@ -88,7 +136,7 @@ export async function verdictFor(ticker: string, force = false): Promise<Verdict
     observations: toObservations(results),
     anchorPrice,
     corporateActions: actions,
-    earningsEvents: earningsCache.get(upper)?.value ?? [],
+    earningsEvents: earningsFor(upper),
   });
 
   verdictCache.set(upper, { value: verdict, at: nowMs });
@@ -144,6 +192,16 @@ export function health(): Record<string, unknown> {
     independentFeeds: feeds.size,
     canCorroborateHalts: feeds.size >= 2,
     cachedVerdicts: verdictCache.size,
+    earnings: {
+      lastRefresh: earningsAt === 0 ? null : Math.floor(earningsAt / 1000),
+      // Said plainly: with no calendar loaded, EARNINGS_WINDOW cannot fire,
+      // and a band that is never widened looks identical to one that did not
+      // need widening.
+      loaded: earningsAt !== 0,
+      tracked: [...earningsCache.values()].reduce((n, c) => n + c.value.length, 0),
+      next: nextEarnings(),
+      failures: earningsFailures.length,
+    },
     chain: chainStatus(),
   };
 }
@@ -156,6 +214,19 @@ export function health(): Record<string, unknown> {
  * updates — the two look identical from outside and have entirely different
  * fixes.
  */
+/** The soonest scheduled release per instrument, for operators. */
+function nextEarnings(): Array<{ ticker: string; at: number; timing: string }> {
+  const out: Array<{ ticker: string; at: number; timing: string }> = [];
+  const now = Math.floor(Date.now() / 1000);
+  for (const [ticker, slot] of earningsCache) {
+    const soonest = slot.value
+      .filter((e) => e.at >= now)
+      .sort((a, b) => a.at - b.at)[0];
+    if (soonest) out.push({ ticker, at: soonest.at, timing: soonest.timing });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
 function chainStatus(): Record<string, unknown> {
   const cfg = chainConfig();
   const blockers = writeBlockers(cfg);

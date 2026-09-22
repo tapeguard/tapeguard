@@ -153,6 +153,19 @@ on correct prices four times a year per ticker.
 The multiplier suppresses false alarms, not detections: a 10:1 split on the same
 night is still 44 sigma after it, and is still caught.
 
+The calendar comes from Nasdaq's public endpoint, which needs no key and
+carries the one field that decides everything: whether a company reports
+before the open or after the close. That says which of two adjoining gaps holds
+the announcement, and getting it wrong puts the widened band on the wrong
+night. When the hour is not supplied, both adjoining gaps are treated as
+exposed rather than one being guessed.
+
+```
+NVDA  baseline                   band +/-2.81%   SINGLE_SOURCE
+NVDA  release inside the gap     band +/-9.84%   EARNINGS_WINDOW | SINGLE_SOURCE
+                                      x3.50      NVDA's earnings multiple
+```
+
 ## Layout
 
 ```
@@ -259,10 +272,8 @@ decide from.
 
 ### Not built yet
 
-- An earnings **provider**. The guard and its tests are done and
-  `setEarnings()` accepts events, but nothing populates it yet, so
-  `EARNINGS_WINDOW` never fires in production.
-- `npm run calibrate` — fitting the sigmas against realised gaps.
+- `npm run calibrate` — fitting the sigmas against realised gaps. Until it
+  runs, every sigma is a prior and the bands are not validated numbers.
 - A published track record scored from chain logs.
 
 **Do not settle real money against this.**
