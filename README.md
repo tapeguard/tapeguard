@@ -273,17 +273,49 @@ straight through the event the guards exist to catch.
 
 ```
 RELAY_ONCE=true RELAY_DRY=true node src/server/relayer.ts
+  would post 8/8: HOOD (never posted), COIN (never posted), NVDA ...
+
+cast call $ADDR "getVerdict(string)(...)" "NVDA"
+  execution reverted: NotPosted("NVDA")      <- nothing was written
 ```
 
-`RELAY_DRY` does everything except send, so a new deployment can be checked
-before the first test of it is also an irreversible mainnet write.
+`RELAY_DRY` does everything except send, so the first test of a new deployment
+is not also an irreversible mainnet write.
 
 ## Deploying
 
-```bash
-sudo bash deploy/setup.sh                 # on the VPS
-HOST=root@YOUR_IP bash deploy/push.sh     # from here
+Check reachability first. `npm run doctor` asks each chain what it is, and
+when one does not answer it works out whether that is the chain or the name
+lookup — by fetching the real address over encrypted DNS and connecting to it
+directly with the right SNI.
+
 ```
+npm run doctor
+
+rh-mainnet  https://rpc.mainnet.chain.robinhood.com
+  FAIL  unreachable: fetch failed
+  FAIL  DNS for rpc.mainnet.chain.robinhood.com is being intercepted on this network.
+        The chain is up: reaching 104.20.46.209 directly returned chainId 4663.
+```
+
+That distinction matters because the two look identical from a connection
+error, and only one of them is your problem.
+
+```bash
+sudo bash deploy/setup.sh                        # on the VPS
+npm run doctor                                   # from wherever you will deploy
+npm run deploy -- rh-testnet                     # rehearse
+DEPLOY_CONFIRM=yes npm run deploy -- rh-mainnet  # live, gated
+HOST=root@YOUR_IP bash deploy/push.sh            # ship the service
+```
+
+`npm run deploy` refuses before it spends: it asks the RPC for its chain id
+rather than trusting the label on the URL, checks the deployer balance covers
+the estimate, requires `DEPLOY_CONFIRM=yes` on a live chain, and rejects a
+deployer key equal to the signer key. Afterwards it reads the contract back to
+confirm the constructor really did allow-list the signer — a deployment that
+silently allow-listed nobody produces a feed that rejects every post as coming
+from a stranger.
 
 Two systemd units on purpose. The API holds no keys and faces the internet; the
 relayer holds a funded key and faces the chain. A crash loop in one must not

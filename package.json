@@ -17,7 +17,9 @@
     "dev": "node src/server/http.ts",
     "start": "node src/server/http.ts",
     "abi": "node scripts/abi.mjs",
-    "calibrate": "node scripts/calibrate.ts"
+    "calibrate": "node scripts/calibrate.ts",
+    "doctor": "node scripts/doctor.ts",
+    "deploy": "node scripts/deploy.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
