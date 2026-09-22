@@ -131,17 +131,29 @@ export function buildVerdict(input: VerdictInput): Verdict {
       ".",
   );
 
-  // Source count first: everything downstream is weaker with one source, and
-  // a consumer should see that before it sees any number derived from it.
+  // Independence first: everything downstream is weaker without it, and a
+  // consumer should see that before it sees any number derived from it.
+  const feeds = new Set(input.observations.map((o) => o.feed ?? o.source));
   if (agreed.sourceCount === 1) {
     flags |= Flag.SINGLE_SOURCE;
     reasons.push(
       `Only "${agreed.sources[0]}" resolved, so the cross-source spread is 0 because ` +
         `there was nothing to compare against, not because sources agree.`,
     );
+  } else if (feeds.size === 1) {
+    // Several vendors, one tape. The median cannot outvote a bad print they
+    // all inherited, and their spread is zero for the same reason a single
+    // source's is: there is nothing there to disagree.
+    flags |= Flag.SINGLE_SOURCE;
+    reasons.push(
+      `${agreed.sourceCount} vendors (${agreed.sources.join(", ")}) all read one feed ` +
+        `("${[...feeds][0]}"). That is one source wearing ${agreed.sourceCount} hats, ` +
+        `not ${agreed.sourceCount} opinions.`,
+    );
   } else {
     reasons.push(
-      `${agreed.sourceCount} sources (${agreed.sources.join(", ")}), median taken, ` +
+      `${agreed.sourceCount} sources across ${feeds.size} feeds ` +
+        `(${agreed.sources.join(", ")}), median taken, ` +
         `spread ${agreed.maxDeviationBps.toFixed(1)}bps.`,
     );
   }

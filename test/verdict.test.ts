@@ -130,6 +130,22 @@ test("a single source is never safe, even with a fresh print", () => {
   assert.match(v.reasons.join(" "), /not because sources agree/);
 });
 
+test("several vendors on one feed count as a single source", () => {
+  const v = buildVerdict({
+    ticker: "NVDA",
+    now: TUE_NOON,
+    anchorPrice: 179.5,
+    observations: [
+      { source: "vendorA", price: 180.0, lastTradeTime: TUE_NOON - 3, feed: "iex" },
+      { source: "vendorB", price: 180.01, lastTradeTime: TUE_NOON - 4, feed: "iex" },
+    ],
+  });
+  assert.equal(v.sourceCount, 2);
+  assert.ok(hasFlag(v.flags, Flag.SINGLE_SOURCE), "two hats on one head");
+  assert.equal(v.safe, false);
+  assert.match(v.reasons.join(" "), /one source wearing 2 hats/);
+});
+
 test("a shut tape is DERIVED and says the price was never printed", () => {
   const v = buildVerdict({
     ticker: "NVDA",

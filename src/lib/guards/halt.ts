@@ -30,6 +30,12 @@ export interface SourceObservation {
    * but can never establish freshness, so it is excluded from this test.
    */
   lastTradeTime: number | null;
+  /**
+   * The underlying feed this source resells, when known. Two vendors on one
+   * feed are one source for independence purposes. Defaults to the source
+   * name, which treats every source as its own feed.
+   */
+  feed?: string;
 }
 
 /** An entry from an exchange halt feed, when one is reachable. */
@@ -51,6 +57,11 @@ export interface HaltVerdict {
   thresholdSec: number;
   /** Number of sources that reported a genuine print time. */
   timestampedSources: number;
+  /**
+   * Distinct underlying feeds among those sources. This, not the source
+   * count, is what corroboration needs.
+   */
+  independentFeeds: number;
   /** Spread between the oldest and freshest source timestamp, seconds. */
   sourceTimestampSpreadSec: number | null;
   reason: string;
@@ -72,6 +83,7 @@ export function checkHalt(args: {
     thresholdSec,
     secondsSinceLastPrint: null as number | null,
     timestampedSources: 0,
+    independentFeeds: 0,
     sourceTimestampSpreadSec: null as number | null,
   };
 
@@ -115,6 +127,7 @@ export function checkHalt(args: {
     };
   }
 
+  const feeds = new Set(timestamped.map((o) => o.feed ?? o.source));
   const times = timestamped.map((o) => o.lastTradeTime);
   const freshest = Math.max(...times);
   const oldest = Math.min(...times);
@@ -125,6 +138,7 @@ export function checkHalt(args: {
     ...base,
     secondsSinceLastPrint: age,
     timestampedSources: timestamped.length,
+    independentFeeds: feeds.size,
     sourceTimestampSpreadSec: spread,
   };
 
@@ -145,33 +159,36 @@ export function checkHalt(args: {
     };
   }
 
-  // Every timestamped source is stale. With two or more independent sources
-  // that is the market's silence, not one connection's.
-  if (timestamped.length >= 2) {
+  // Every timestamped source is stale. With two or more independent FEEDS
+  // that is the market's silence, not one connection's. Counting vendors
+  // instead of feeds would let three resellers of one IEX tape "corroborate"
+  // each other, when their common silence is a single observation.
+  if (feeds.size >= 2) {
     return {
       ...measured,
       halted: true,
       confidence: "corroborated",
       reason:
-        `No print for ${age}s during regular hours, across ` +
-        `${timestamped.length} independent sources ` +
-        `(${timestamped.map((o) => o.source).join(", ")}). ` +
+        `No print for ${age}s during regular hours, across ${feeds.size} independent ` +
+        `feeds (${[...feeds].join(", ")}) via ` +
+        `${timestamped.map((o) => o.source).join(", ")}. ` +
         `Threshold is ${thresholdSec}s. The tape has stopped, not a vendor.`,
     };
   }
 
-  // One source, and it is stale. A halt and a broken connection are the same
+  // One feed, and it is stale. A halt and a broken connection are the same
   // observation here. Refuse the price, and say why the call is unconfirmed
   // rather than dress a guess up as a detection.
+  const via = timestamped.map((o) => o.source).join(", ");
   return {
     ...measured,
     halted: true,
     confidence: "unconfirmed",
     flags: Flag.HALT_UNCONFIRMED | Flag.SINGLE_SOURCE,
     reason:
-      `No print for ${age}s during regular hours, but only ` +
-      `"${timestamped[0]?.source}" reports print times. A halt and a stalled ` +
-      `vendor are indistinguishable from one source, so this is refused as ` +
-      `unconfirmed. Add a second timestamped source to decide it.`,
+      `No print for ${age}s during regular hours, but every timestamped source ` +
+      `(${via}) reads the same feed "${[...feeds][0]}". A halt and a stalled feed ` +
+      `are indistinguishable from one vantage point, so this is refused as ` +
+      `unconfirmed. Add a source on a genuinely different feed to decide it.`,
   };
 }

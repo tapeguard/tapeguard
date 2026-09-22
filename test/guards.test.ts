@@ -241,7 +241,43 @@ test("one stale source cannot tell a halt from a dead connection", () => {
   assert.equal(v.confidence, "unconfirmed");
   assert.ok(hasFlag(v.flags, Flag.HALT_UNCONFIRMED));
   assert.ok(hasFlag(v.flags, Flag.SINGLE_SOURCE));
-  assert.match(v.reason, /Add a second timestamped source/);
+  assert.match(v.reason, /Add a source on a genuinely different feed/);
+});
+
+test("three vendors on one feed do not corroborate a halt", () => {
+  // The median cannot outvote a bad print they all inherited, and their
+  // silence is one observation, not three. Counting vendors instead of feeds
+  // is how a feed claims corroboration it does not have.
+  const v = checkHalt({
+    instrument: NVDA,
+    session: Session.REGULAR,
+    now: REGULAR_NOON,
+    observations: [
+      { source: "vendorA", price: 180, lastTradeTime: REGULAR_NOON - 400, feed: "iex" },
+      { source: "vendorB", price: 180, lastTradeTime: REGULAR_NOON - 400, feed: "iex" },
+      { source: "vendorC", price: 180, lastTradeTime: REGULAR_NOON - 400, feed: "iex" },
+    ],
+  });
+  assert.equal(v.timestampedSources, 3);
+  assert.equal(v.independentFeeds, 1);
+  assert.equal(v.confidence, "unconfirmed", "three hats are not three opinions");
+  assert.ok(hasFlag(v.flags, Flag.SINGLE_SOURCE));
+  assert.match(v.reason, /reads the same feed "iex"/);
+});
+
+test("two genuinely different feeds do corroborate", () => {
+  const v = checkHalt({
+    instrument: NVDA,
+    session: Session.REGULAR,
+    now: REGULAR_NOON,
+    observations: [
+      { source: "alpaca", price: 180, lastTradeTime: REGULAR_NOON - 400, feed: "iex" },
+      { source: "yahoo", price: 180, lastTradeTime: REGULAR_NOON - 395, feed: "yahoo" },
+    ],
+  });
+  assert.equal(v.independentFeeds, 2);
+  assert.equal(v.confidence, "corroborated");
+  assert.equal(v.flags, Flag.NONE);
 });
 
 test("one lagging vendor is not a halt", () => {
