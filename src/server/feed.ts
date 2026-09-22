@@ -12,6 +12,8 @@ import {
   enabledProviders,
   providerOutcomes,
   workingProviders,
+  isWorking,
+  OUTCOME_GRACE_SEC,
 } from "../providers/registry.ts";
 import { chainConfig, signerAddress, writeBlockers } from "../chain/client.ts";
 import { previousClose, corporateActions } from "../providers/yahoo.ts";
@@ -200,13 +202,15 @@ export function health(): Record<string, unknown> {
         feed: p.feed,
         reportsPrintTime: p.reportsPrintTime,
         configured: true,
-        // undefined until it has been tried, so "not yet asked" is not
-        // reported as "working".
-        working: o?.ok,
-        lastTriedAt: o?.at ?? null,
-        lastError: o?.error ?? null,
+        // null until it has been tried, so "not yet asked" is not reported
+        // as either working or broken.
+        working: o?.lastOkAt == null && o?.lastErrorAt == null ? null : isWorking(p.name),
+        lastOkAt: o?.lastOkAt ?? null,
+        lastErrorAt: o?.lastErrorAt ?? null,
+        lastError: o?.lastError ?? null,
       };
     }),
+    providerGraceSec: OUTCOME_GRACE_SEC,
     // Stated plainly, because a one-feed deployment cannot corroborate a halt
     // and must not look like one that can. Halt corroboration further needs
     // sources that witness print times, so a working provider with

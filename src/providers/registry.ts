@@ -32,18 +32,48 @@ export const enabledProviders = (): PriceProvider[] => PROVIDERS.filter((p) => p
  * answer from the config file.
  */
 export interface ProviderOutcome {
-  ok: boolean;
-  at: number;
-  error?: string;
+  /** Unix seconds of the last request that succeeded, if any. */
+  lastOkAt: number | null;
+  /** Unix seconds of the last request that failed, if any. */
+  lastErrorAt: number | null;
+  lastError: string | null;
 }
+
+/**
+ * How long a success stands for before a provider is treated as down.
+ *
+ * Judging a provider by its most recent attempt alone makes the summary
+ * flap: one rate-limited request in a burst of eight flips the whole
+ * deployment to "cannot corroborate halts" while the provider is answering
+ * perfectly well a second later. A recent success is the honest signal —
+ * long enough to ride out a blip, short enough that a genuinely dead
+ * provider stops counting.
+ */
+export const OUTCOME_GRACE_SEC = 300;
 
 const outcomes = new Map<string, ProviderOutcome>();
 
 export const providerOutcomes = (): ReadonlyMap<string, ProviderOutcome> => outcomes;
 
-/** Providers that answered on their most recent attempt. */
+function record(name: string, ok: boolean, at: number, error?: string): void {
+  const prev = outcomes.get(name) ?? { lastOkAt: null, lastErrorAt: null, lastError: null };
+  outcomes.set(
+    name,
+    ok
+      ? { ...prev, lastOkAt: at }
+      : { ...prev, lastErrorAt: at, lastError: error ?? "unknown" },
+  );
+}
+
+/** Has this provider answered recently enough to be counted? */
+export function isWorking(name: string, now = Math.floor(Date.now() / 1000)): boolean {
+  const o = outcomes.get(name);
+  return o?.lastOkAt != null && now - o.lastOkAt <= OUTCOME_GRACE_SEC;
+}
+
+/** Providers that have answered within the grace window. */
 export function workingProviders(): PriceProvider[] {
-  return enabledProviders().filter((p) => outcomes.get(p.name)?.ok === true);
+  return enabledProviders().filter((p) => isWorking(p.name));
 }
 
 export async function fetchAll(
@@ -57,11 +87,11 @@ export async function fetchAll(
       const at = Math.floor(Date.now() / 1000);
       try {
         const quote = await p.quote(ticker, signal);
-        outcomes.set(p.name, { ok: true, at });
+        record(p.name, true, at);
         return quote;
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
-        outcomes.set(p.name, { ok: false, at, error });
+        record(p.name, false, at, error);
         return { source: p.name, ticker, error };
       }
     }),
