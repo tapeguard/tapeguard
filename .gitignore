@@ -3,4 +3,10 @@ node_modules/
 .env.local
 *.log
 dist/
-data/cache/
+data/
+
+# Foundry build output. src/chain/abi.ts is generated from it and committed,
+# so the artifacts themselves add churn to every diff without adding
+# information -- regenerate with `forge build && npm run abi`.
+out/
+cache/

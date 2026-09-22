@@ -1,1 +1,0 @@
-{"version":1,"failures":[{"contract":"contracts/test/Digest.t.sol:DigestFixtureTest","test":"test_WriteDigestFixture"}]}
