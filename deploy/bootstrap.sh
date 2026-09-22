@@ -22,7 +22,10 @@ if command -v forge >/dev/null 2>&1; then forge test; fi
 echo "    local checks pass"
 
 say "reachable?"
-ssh -o ConnectTimeout=10 -o BatchMode=yes "$HOST" 'echo "    connected to $(hostname)"'
+# No BatchMode: password auth must be able to prompt. If you are typing a
+# password you will be asked several times — `ssh-copy-id $HOST` once first
+# makes the rest of this quiet.
+ssh -o ConnectTimeout=10 "$HOST" 'echo "    connected to $(hostname), $(. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME")"'
 
 say "copying the tree to $HOST:$APP_DIR"
 ssh "$HOST" "mkdir -p $APP_DIR"
