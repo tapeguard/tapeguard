@@ -6,7 +6,13 @@
 import { UNIVERSE, calibration, parameterSource } from "../lib/universe.ts";
 import { buildVerdict, type Verdict } from "../lib/verdict.ts";
 import { sessionAt, Session } from "../lib/session.ts";
-import { fetchAll, toObservations, enabledProviders } from "../providers/registry.ts";
+import {
+  fetchAll,
+  toObservations,
+  enabledProviders,
+  providerOutcomes,
+  workingProviders,
+} from "../providers/registry.ts";
 import { chainConfig, signerAddress, writeBlockers } from "../chain/client.ts";
 import { previousClose, corporateActions } from "../providers/yahoo.ts";
 import { fetchEarnings } from "../providers/earnings.ts";
@@ -171,9 +177,14 @@ export function health(): Record<string, unknown> {
   const now = Math.floor(Date.now() / 1000);
   const state = sessionAt(now);
   const providers = enabledProviders();
-  const feeds = new Set(providers.map((p) => p.feed));
+  const outcomes = providerOutcomes();
+  const working = workingProviders();
+  // Counted from providers that actually answered, not from providers that
+  // are configured. A placeholder or revoked key otherwise reports a feed
+  // this deployment does not have.
+  const feeds = new Set(working.map((p) => p.feed));
   return {
-    ok: providers.length > 0,
+    ok: working.length > 0,
     sessionState: {
       session: state.session,
       etWallClock: state.etWallClock,
@@ -182,15 +193,27 @@ export function health(): Record<string, unknown> {
       nextOpen: state.nextOpen,
       secondsUntilNextOpen: state.secondsUntilNextOpen,
     },
-    providers: providers.map((p) => ({
-      name: p.name,
-      feed: p.feed,
-      reportsPrintTime: p.reportsPrintTime,
-    })),
+    providers: providers.map((p) => {
+      const o = outcomes.get(p.name);
+      return {
+        name: p.name,
+        feed: p.feed,
+        reportsPrintTime: p.reportsPrintTime,
+        configured: true,
+        // undefined until it has been tried, so "not yet asked" is not
+        // reported as "working".
+        working: o?.ok,
+        lastTriedAt: o?.at ?? null,
+        lastError: o?.error ?? null,
+      };
+    }),
     // Stated plainly, because a one-feed deployment cannot corroborate a halt
-    // and must not look like one that can.
+    // and must not look like one that can. Halt corroboration further needs
+    // sources that witness print times, so a working provider with
+    // reportsPrintTime false does not count towards it.
     independentFeeds: feeds.size,
-    canCorroborateHalts: feeds.size >= 2,
+    canCorroborateHalts:
+      new Set(working.filter((p) => p.reportsPrintTime).map((p) => p.feed)).size >= 2,
     cachedVerdicts: verdictCache.size,
     earnings: {
       lastRefresh: earningsAt === 0 ? null : Math.floor(earningsAt / 1000),
