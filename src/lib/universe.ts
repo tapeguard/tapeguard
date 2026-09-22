@@ -23,17 +23,36 @@ export interface Instrument {
    * stale a *provider* is allowed to look, not by market activity.
    */
   haltThresholdSec: number;
+  /**
+   * Whether this instrument reports earnings at all. An ETF does not, and a
+   * guard that invents a quarterly announcement for SPY widens a band four
+   * times a year for an event that never happens.
+   */
+  hasEarnings: boolean;
+  /**
+   * Multiple of `overnightSigmaBps` to apply when a scheduled earnings
+   * release falls inside the window being priced. Prior, not fitted.
+   *
+   * The gap distribution is bimodal and a single sigma averages the two
+   * modes. Two years gives roughly eight earnings gaps per ticker against
+   * ~500 ordinary ones, so a model can miss every earnings night and still
+   * report 95% coverage — while failing on precisely the nights a lending
+   * protocol is most exposed. Headline coverage cannot see this; it has to
+   * be scored separately.
+   */
+  earningsSigmaMultiple: number;
 }
 
+/* prettier-ignore */
 export const UNIVERSE: readonly Instrument[] = [
-  { ticker: "HOOD", name: "Robinhood Markets", overnightSigmaBps: 215, haltThresholdSec: 180 },
-  { ticker: "COIN", name: "Coinbase Global", overnightSigmaBps: 180, haltThresholdSec: 180 },
-  { ticker: "NVDA", name: "NVIDIA", overnightSigmaBps: 150, haltThresholdSec: 120 },
-  { ticker: "TSLA", name: "Tesla", overnightSigmaBps: 188, haltThresholdSec: 120 },
-  { ticker: "AAPL", name: "Apple", overnightSigmaBps: 104, haltThresholdSec: 120 },
-  { ticker: "MSTR", name: "MicroStrategy", overnightSigmaBps: 169, haltThresholdSec: 180 },
-  { ticker: "SPY", name: "SPDR S&P 500 ETF", overnightSigmaBps: 55, haltThresholdSec: 120 },
-  { ticker: "TLT", name: "iShares 20+ Year Treasury", overnightSigmaBps: 57, haltThresholdSec: 300 },
+  { ticker: "HOOD", name: "Robinhood Markets", overnightSigmaBps: 215, haltThresholdSec: 180, hasEarnings: true, earningsSigmaMultiple: 3.2 },
+  { ticker: "COIN", name: "Coinbase Global", overnightSigmaBps: 180, haltThresholdSec: 180, hasEarnings: true, earningsSigmaMultiple: 3.0 },
+  { ticker: "NVDA", name: "NVIDIA", overnightSigmaBps: 150, haltThresholdSec: 120, hasEarnings: true, earningsSigmaMultiple: 3.5 },
+  { ticker: "TSLA", name: "Tesla", overnightSigmaBps: 188, haltThresholdSec: 120, hasEarnings: true, earningsSigmaMultiple: 3.0 },
+  { ticker: "AAPL", name: "Apple", overnightSigmaBps: 104, haltThresholdSec: 120, hasEarnings: true, earningsSigmaMultiple: 2.8 },
+  { ticker: "MSTR", name: "MicroStrategy", overnightSigmaBps: 169, haltThresholdSec: 180, hasEarnings: true, earningsSigmaMultiple: 3.0 },
+  { ticker: "SPY", name: "SPDR S&P 500 ETF", overnightSigmaBps: 55, haltThresholdSec: 120, hasEarnings: false, earningsSigmaMultiple: 1.0 },
+  { ticker: "TLT", name: "iShares 20+ Year Treasury", overnightSigmaBps: 57, haltThresholdSec: 300, hasEarnings: false, earningsSigmaMultiple: 1.0 },
 ] as const;
 
 const BY_TICKER = new Map(UNIVERSE.map((i) => [i.ticker, i]));

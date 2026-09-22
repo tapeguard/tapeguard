@@ -63,6 +63,19 @@ export interface SessionState {
    * that stamps a Saturday quote with fetch time cannot move this number.
    */
   lastTradableInstant: number;
+  /**
+   * The most recent regular close strictly before now — which during REGULAR
+   * is *yesterday's* close, not this second.
+   *
+   * Distinct from `lastTradableInstant` on purpose, and both are needed.
+   * Freshness asks "could a print have happened by now", so during REGULAR
+   * the answer is now. Measuring a gap asks "how far has price travelled
+   * since the last settled close", and answering that with `now` gives a
+   * window of zero, which would divide by zero sigma and blind the
+   * discontinuity test during exactly the hours it can be checked against a
+   * live tape.
+   */
+  previousRegularClose: number;
   /** Next regular open, unix seconds. */
   nextOpen: number;
   secondsUntilNextOpen: number;
@@ -389,6 +402,7 @@ export function sessionAt(unixSeconds: number = Math.floor(Date.now() / 1000)): 
     session === Session.REGULAR ? unixSeconds : previousRegularClose(unixSeconds);
 
   const nextOpen = nextRegularOpen(unixSeconds);
+  const priorClose = previousRegularClose(unixSeconds);
 
   return {
     session,
@@ -400,6 +414,7 @@ export function sessionAt(unixSeconds: number = Math.floor(Date.now() / 1000)): 
     regularOpen,
     regularClose,
     lastTradableInstant,
+    previousRegularClose: priorClose,
     nextOpen,
     secondsUntilNextOpen: Math.max(0, nextOpen - unixSeconds),
   };
