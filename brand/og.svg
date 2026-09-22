@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <!--
+    Square on purpose. qlmanage renders an SVG preserving aspect against its
+    longest side, so a 1200x630 document comes back scaled to 1200 tall and
+    cropped on the width. Laying the 630px band out inside a square canvas and
+    cropping the centre afterwards renders 1:1.
+  -->
+  <rect width="1200" height="1200" fill="#000000"/>
+  <g transform="translate(0,285)">
+    <rect width="1200" height="630" fill="#000000"/>
+    <rect x="1" y="1" width="1198" height="628" fill="none" stroke="#1c1c1c" stroke-width="2"/>
+
+  <!-- mark -->
+  <rect x="72" y="64" width="34" height="34" fill="#ffffff"/>
+  <rect x="78" y="71" width="22" height="4" fill="#000000"/>
+  <rect x="78" y="79" width="13" height="4" fill="#000000"/>
+  <rect x="78" y="87" width="17" height="4" fill="#000000"/>
+
+  <text x="120" y="91" font-family="Menlo, monospace" font-size="27" fill="#ffffff">tapeguard</text>
+  <text x="1128" y="89" font-family="Menlo, monospace" font-size="19" fill="#7a7a7a" text-anchor="end">tapeguard.xyz</text>
+
+  <text x="72" y="225" font-family="Menlo, monospace" font-size="52" fill="#ffffff">The price, and the reason</text>
+  <text x="72" y="289" font-family="Menlo, monospace" font-size="52" fill="#6f6f6f">not to use it.</text>
+
+  <rect x="72" y="332" width="1056" height="190" fill="#050505" stroke="#2e2e2e" stroke-width="1"/>
+
+  <text x="100" y="380" font-family="Menlo, monospace" font-size="22" xml:space="preserve"><tspan fill="#7a7a7a">guard.getPriceIfSafe(</tspan><tspan fill="#ffffff">"NVDA"</tspan><tspan fill="#7a7a7a">, 600);</tspan></text>
+  <text x="100" y="414" font-family="Menlo, monospace" font-size="22" xml:space="preserve"><tspan fill="#7a7a7a">  -&gt; revert </tspan><tspan fill="#ff5f56">Flagged(SPLIT_PENDING | DISCONTINUITY)</tspan></text>
+
+  <text x="100" y="462" font-family="Menlo, monospace" font-size="22" xml:space="preserve"><tspan fill="#4a4a4a">move  </tspan><tspan fill="#ffffff">-90.00%</tspan><tspan fill="#4a4a4a">   =  </tspan><tspan fill="#ff5f56">126 sigma</tspan><tspan fill="#4a4a4a">   not a price move</tspan></text>
+  <text x="100" y="496" font-family="Menlo, monospace" font-size="22" xml:space="preserve"><tspan fill="#4a4a4a">      10:1 forward split, not a repricing.</tspan></text>
+
+  <text x="72" y="577" font-family="Menlo, monospace" font-size="19" fill="#4a4a4a">Robinhood Chain 4663 &#183; splits &#183; halts &#183; earnings &#183; feed independence</text>
+  </g>
+</svg>

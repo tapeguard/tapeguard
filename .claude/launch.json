@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tapeguard",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["src/server/http.ts"],
+      "port": 8080
+    }
+  ]
+}
