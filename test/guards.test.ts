@@ -97,6 +97,42 @@ test("a genuine crash is refused, but not called a split", () => {
   assert.match(v.reason, /no clean split ratio explains it/);
 });
 
+test("a fractional split is refused but not claimed", () => {
+  // A 4:3 split takes the price to 0.75 of the anchor. So does a 25% drop on
+  // a bad quarter. From price alone these are the same observation, and the
+  // guard must not resolve a coin flip by printing a decimal point.
+  const v = checkDiscontinuity({
+    ticker: "NVDA",
+    anchorPrice: 180,
+    newPrice: 135,
+    overnightSigmaBps: NVDA.overnightSigmaBps,
+    darkHours: OVERNIGHT,
+  });
+  assert.ok(hasFlag(v.flags, Flag.DISCONTINUITY), "still refused: not an ordinary gap");
+  assert.equal(hasFlag(v.flags, Flag.SPLIT_PENDING), false, "must not claim the split");
+  assert.equal(v.hypothesis?.label, "4:3 forward split");
+  assert.equal(v.hypothesis?.decisive, false);
+  assert.match(v.reason, /Price alone cannot separate the two/);
+  assert.match(v.reason, /deferring to the corporate-actions feed/);
+});
+
+test("a whole-ratio split is decisive where a fractional one is not", () => {
+  const ratioSigma = (anchor: number, next: number): number =>
+    checkDiscontinuity({
+      ticker: "NVDA",
+      anchorPrice: anchor,
+      newPrice: next,
+      overnightSigmaBps: NVDA.overnightSigmaBps,
+      darkHours: OVERNIGHT,
+    }).hypothesis?.ratioSigma ?? 0;
+
+  // 10:1 lands at 0.1 -- 153 sigma from no move. Nothing a market does
+  // reaches there, so the claim stands.
+  assert.ok(ratioSigma(1000, 100) > 100);
+  // 4:3 lands at 0.75 -- 19 sigma, squarely inside what a bad quarter reaches.
+  assert.ok(ratioSigma(180, 135) < 25);
+});
+
 test("a low-volatility instrument trips at a smaller move", () => {
   // SPY's overnight sigma is 55bps, so 8 sigma is a ~4.4% gap. The threshold
   // is per-instrument for exactly this reason: one global percentage would be

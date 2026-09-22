@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
     "test:session": "node --test test/session.test.ts",
-    "test:guards": "node --test test/guards.test.ts"
+    "test:guards": "node --test test/guards.test.ts",
+    "demo": "node scripts/demo.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

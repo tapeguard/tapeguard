@@ -37,12 +37,42 @@ export const RAW_IMPLAUSIBLE_SIGMA = 8;
  */
 export const ADJUSTED_PLAUSIBLE_SIGMA = 4;
 
+/**
+ * How impossible a candidate ratio must itself be, in sigma, before the
+ * hypothesis is stated as a finding rather than a possibility.
+ *
+ * This bound exists because the heuristic has a real blind spot, and the
+ * honest response is to bound the claim rather than hide it. A 4:3 split
+ * moves the price to 0.75 of the anchor. So does a 25% earnings drop. From
+ * price alone the two are the same observation, and no threshold separates
+ * them, because there is nothing there to separate.
+ *
+ * The heuristic's power comes from moves that are impossible as prices — a
+ * 10:1 lands at 0.1, which is 126 sigma of any ordinary night and roughly
+ * 36 sigma even of an earnings one. Nothing a market does reaches there.
+ * The fractional splits sit at 12 to 22 sigma, squarely inside the range a
+ * bad quarter reaches, so a claim there would be a coin flip wearing a
+ * decimal point.
+ *
+ * Below this bar the move is still refused — it is still not an ordinary
+ * gap — but it is reported as ambiguous and handed to `checkSchedule`,
+ * which reads an actual corporate-actions feed and resolves precisely the
+ * cases this test cannot.
+ */
+export const DECISIVE_RATIO_SIGMA = 25;
+
 export interface SplitHypothesis {
   /** Implied newPrice/anchorPrice if this action occurred. 0.1 for a 10:1. */
   impliedRatio: number;
   label: string;
   /** How ordinary the move becomes once this ratio is divided out, in sigma. */
   adjustedSigma: number;
+  /**
+   * How impossible this ratio is as a price move, in sigma. Only a decisive
+   * ratio is reported as a finding; see `DECISIVE_RATIO_SIGMA`.
+   */
+  ratioSigma: number;
+  decisive: boolean;
 }
 
 export interface DiscontinuityVerdict {
@@ -130,12 +160,17 @@ export function checkDiscontinuity(args: {
   for (const candidate of CANDIDATES) {
     const adjustedSigma = Math.abs(Math.log(move / candidate.impliedRatio)) / sigmaLog;
     if (adjustedSigma >= ADJUSTED_PLAUSIBLE_SIGMA) continue;
-    if (best === null || adjustedSigma < best.adjustedSigma) {
-      best = { ...candidate, adjustedSigma };
-    }
+    const ratioSigma = Math.abs(Math.log(candidate.impliedRatio)) / sigmaLog;
+    const hypothesis: SplitHypothesis = {
+      ...candidate,
+      adjustedSigma,
+      ratioSigma,
+      decisive: ratioSigma >= DECISIVE_RATIO_SIGMA,
+    };
+    if (best === null || adjustedSigma < best.adjustedSigma) best = hypothesis;
   }
 
-  if (best) {
+  if (best?.decisive) {
     return {
       flags: Flag.DISCONTINUITY | Flag.SPLIT_PENDING,
       rawSigma,
@@ -146,6 +181,21 @@ export function checkDiscontinuity(args: {
         `not a price move. Dividing by ${best.impliedRatio.toFixed(4)} leaves ` +
         `${best.adjustedSigma.toFixed(1)} sigma, an ordinary gap. This is a ` +
         `${best.label}, not a repricing. Refusing until the anchor is restated.`,
+    };
+  }
+
+  if (best) {
+    return {
+      flags: Flag.DISCONTINUITY,
+      rawSigma,
+      rawMovePct,
+      hypothesis: best,
+      reason:
+        `Move of ${rawMovePct.toFixed(2)}% is ${rawSigma.toFixed(0)} sigma and is not an ` +
+        `ordinary gap. It is consistent with a ${best.label}, but that ratio is only ` +
+        `${best.ratioSigma.toFixed(0)} sigma from no move at all, which a genuinely bad ` +
+        `quarter also reaches. Price alone cannot separate the two, so no corporate ` +
+        `action is claimed. Refusing, and deferring to the corporate-actions feed.`,
     };
   }
 
