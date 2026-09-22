@@ -5,12 +5,14 @@
   "description": "Correctness layer for tokenised-equity price oracles: halt, corporate-action and earnings guards",
   "license": "ISC",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types test/*.test.ts",
-    "test:session": "node --test --experimental-strip-types test/session.test.ts",
-    "test:guards": "node --test --experimental-strip-types test/guards.test.ts"
+    "test": "node --test test/*.test.ts",
+    "test:session": "node --test test/session.test.ts",
+    "test:guards": "node --test test/guards.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
